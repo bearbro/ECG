@@ -2,7 +2,7 @@
 
 尝试复现第一和第四的模型
 使用了开源babseline:
-
+https://github.com/JavisPeng/ecg_pytorch
 系统环境：*centos7 python3.6 pytorch1.0*
 
 **大致思路：每个导联作为一个通道，使用1维卷积进行训练**
