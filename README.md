@@ -1,11 +1,16 @@
 来源：["合肥高新杯"心电人机智能大赛](https://tianchi.aliyun.com/competition/entrance/231754/introduction)
 
 尝试复现第一和第四的模型
+* top1
+https://github.com/RandomWalk-xzq/Hefei_ECG_TOP1
+* top4
+https://zhuanlan.zhihu.com/p/98547636
+
 使用了开源babseline:
 https://github.com/JavisPeng/ecg_pytorch
+
 系统环境：*centos7 python3.6 pytorch1.0*
 
-**大致思路：每个导联作为一个通道，使用1维卷积进行训练**
 
 # 数据预处理
 数据解压放在data目录下，使用8个导联的数据，简单进行train_val数据集划分
@@ -24,3 +29,5 @@ python main.py train #从零开始训练
 python main.py test --ckpt=..model_path #加载预训练权重进行测试
 ```
 
+# 修改参数
+项目的设置参数在文件config.py中
