@@ -8,6 +8,8 @@
 '''
 import os, torch
 import numpy as np
+from random import random
+
 from config import config
 import pandas as pd
 
@@ -72,6 +74,8 @@ def split_data(file2idx, name2idx, val_ratio=0.1):
     for item in idx2file:
         # print(len(item), item)
         num = int(len(item) * val_ratio)
+        # 乱序
+        random.shuffle(item)
         val = val.union(item[:num])
     train = data.difference(val)
 
