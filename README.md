@@ -34,4 +34,4 @@ python main.py test --ckpt=..model_path #加载预训练权重进行测试
 
 # Todo
 1. top1的模型仍有bug
-2. top4的模型传统特征还未加入
+2. ~~top4的模型传统特征还未加入~~~

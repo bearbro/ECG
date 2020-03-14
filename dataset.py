@@ -4,6 +4,7 @@
 
 @ author: javis
 '''
+import math
 import os, copy
 import torch
 import numpy as np
@@ -86,8 +87,8 @@ class ECGDataset(Dataset):
     def __getitem__(self, index):
         fid = self.data[index]
         file_path = os.path.join(config.train_dir, fid)
-        df = pd.read_csv(file_path, sep=' ').values
-        x = transform(df, self.train)
+        df = pd.read_csv(file_path, sep=' ')
+        x = transform(df.values, self.train)
         age = self.file2age[fid]
         sex = self.file2sex[fid]
         fr = torch.tensor([age, sex], dtype=torch.float32)
@@ -95,8 +96,9 @@ class ECGDataset(Dataset):
         target[self.file2idx[fid]] = 1
         target = torch.tensor(target, dtype=torch.float32)
         if config.top4_catboost:
-            # todo 获取其他特征
-            other_f = torch.zeros(2, dtype=torch.float32)
+            # 获取其他传统特征
+            r_features_file = os.path.join(config.r_train_dir, fid.replace('txt', 'fea'))
+            other_f = get_other_features(df, r_features_file)  # 1684
             return x, fr, target, other_f
         return x, fr, target
 
@@ -104,6 +106,89 @@ class ECGDataset(Dataset):
         return len(self.data)
 
 
+# df 5000*8
+def get_QRS_features(df, rr_idx):
+    # QRS波形态的特征提取
+    # 在一个导联上，以R峰为基准，向左右两边提取固定长度的数据（-0.2，0.4），【100，200】
+    # 获得若千个含有R峰的片段, 将其叠加。
+    # 通过评估Templates的重合度，来间接反映出病变QRS波的特征
+    # 每个Templates同索引的极差(max - min)
+    # 每个Templates同索引的均值(mean)
+    # 每个Templates同索引的标准差(std)
+    # 经过resample后输出三个等长的长度为50的序列作为特征。  重采样 ？
+    rr = []
+    for i in rr_idx:
+        begin = i - int(config.target_point_num * 0.2 / 10)
+        end = i + int(config.target_point_num * 0.4 / 10)
+        if begin >= 0 and end <= config.target_point_num:
+            rr.append((begin, end))
+    QRS = []
+    for i in range(8):
+        x = df.iloc[:, i].values
+        t = []
+        for j in rr:
+            t.append(x[j[0]:j[1]])
+        t_mean = np.mean(t, axis=0)
+        t_max_min = np.max(t, axis=0) - np.min(t, axis=0)
+        t_std = np.std(t, axis=0)
+        t_mean = signal.resample(t_mean, 50)
+        t_max_min = signal.resample(t_max_min, 50)
+        t_std = signal.resample(t_std, 50)
+        QRS += np.concatenate([t_mean, t_max_min, t_std]).tolist()
+
+    return QRS  # 50*3*8
+
+
+# df 5000*8
+def get_other_features(df, file_path):
+    rr_idx = pd.read_csv(file_path, sep='\t', header=None).values[:, 5]  # R波峰值的下标
+    RR = np.vsplit(df, rr_idx)[1:-2]  # RR区间
+    # RR区间：min，max，mean，std，偏度(skewness)和峰度(kurtosis）6*？*通道数
+    RR_min = [i.min(axis=0).to_list() for i in RR]
+    RR_max = [i.max(axis=0).to_list() for i in RR]
+    RR_mean = [i.mean(axis=0).to_list() for i in RR]
+    RR_std = [i.std(axis=0).to_list() for i in RR]
+    RR_skewness = [i.skew(axis=0).to_list() for i in RR]  # 计算偏斜度
+    RR_kurtosis = [i.kurt(axis=0).to_list() for i in RR]  # 计算峰度
+    # 选择中间的k个
+    k = 10
+    k_begin = (len(RR_min) - k) // 2
+    RR_section_feature = [RR_min, RR_max, RR_mean, RR_std, RR_skewness, RR_kurtosis]
+    RR_section_feature_k = []  # 6*8*k  k=10  480
+    for i in range(len(RR_section_feature)):
+        RR_section_feature_k += RR_section_feature[i][k_begin:k_begin + k]
+    # RR_section_feature_k k*6*8
+    RR_section_feature_k = np.array(RR_section_feature_k).T.reshape((-1,)).tolist()
+
+    rr_len = [len(i) for i in RR]  # RR区间长度
+
+    rrc = []  # 相邻RR间期差值
+    for i in range(1, len(rr_len)):
+        rr_i = rr_len[i] - rr_len[i - 1]
+        rrc.append(rr_i)
+    # pNN50:相邻RR间期差距大于50ms的比率 大于50ms的RR间期对数/总对数 1
+    pNN50 = len([i for i in rrc if i * 10000 / config.target_point_num > 50]) / len(rrc)
+
+    # R波密度: R波个数 / 记录长度 1
+    rP = len(RR) / ((rr_idx[-1] - rr_idx[0]) * 0.002)
+    # RMSSD: 相邻RR间期差值的均方根 1
+    RMSSD = math.sqrt(sum([i ** 2 for i in rrc]) / len(rrc))
+    # RR间期的采样熵:衡量RR间期变化混乱   1
+    RRHX = sum([i * math.log2(i) for i in rr_len]) * -1
+
+    QRS_features = get_QRS_features(df, rr_idx)  # 1200
+
+    other_f = RR_section_feature_k + [pNN50, rP, RMSSD, RRHX] + QRS_features  # 480+4+1200
+    return torch.tensor(other_f, dtype=torch.float32)
+
+
 if __name__ == '__main__':
     d = ECGDataset(config.train_data)
+    # for i in range(len(d)):
+    #     print(i)
+    #     d[i]
+    # d = ECGDataset(config.train_data, False)
+    # for i in range(len(d)):
+    #     print(i)
+    #     d[i]
     print(d[0])

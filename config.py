@@ -16,6 +16,8 @@ class Config:
     train_label = os.path.join(root, 'hf_round1_label.txt')
     test_label = os.path.join(root, 'hf_round1_subA.txt')
     arrythmia = os.path.join(root, 'hf_round1_arrythmia.txt')
+    r_train_dir = os.path.join(root, 'train_FeaPosition')
+    r_test_dir = os.path.join(root, 'testA_FeaPosition')
     root = r'data'
 
     # for train
@@ -33,7 +35,7 @@ class Config:
     # 最大训练多少个epoch
     max_epoch = 256
     # 目标的采样长度
-    target_point_num = [2048, 5000, 2048][kind]
+    target_point_num = [2048, 5000, 5000][kind]
     # 保存模型的文件夹
     ckpt = 'ckpt'
     # 保存提交文件的文件夹
@@ -50,12 +52,12 @@ class Config:
     # for test
     temp_dir = os.path.join(root, 'temp')
     top4_state = 'ckpt/DeepNN34_202003021252/best_w.pth'
-    top4_catboost = False
+    top4_catboost = True
     top4_data_val = os.path.join(root, 'top4_data_val.csv')
     top4_data_train = os.path.join(root, 'top4_data_train.csv')
-    top4_catboost_model='catboost_model'
-    top4_cat_features=[1079, 1080, 1081, 1082]
+    top4_catboost_model = 'catboost_model'
+    top4_cat_features = [] + [55 + 1024 + 1684 + 1 + 55, 55 + 1024 + 1684 + 2 + 55]
+
 
 config = Config()
 print("model:", config.model_name)
-

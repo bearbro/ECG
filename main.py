@@ -16,7 +16,7 @@ from torch import nn, optim
 from torch.utils.data import DataLoader
 
 from data_process import name2index
-from dataset import ECGDataset
+from dataset import ECGDataset, get_other_features
 from config import config
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -51,12 +51,12 @@ def train_epoch(model, optimizer, criterion, train_dataloader, show_interval=10)
             output, _ = model(inputs)
         else:
             output = model(inputs)
-        loss = criterion(output, target)
+        loss = criterion(output, target)  # BCEWithLogitsLoss, 先对output进行sigmoid，然后求BCELoss
         loss.backward()
         optimizer.step()
         loss_meter += loss.item()
         it_count += 1
-        # output = torch.sigmoid(output)
+        output = torch.sigmoid(output)
         f1 = utils.calc_f1(target, output)
         f1_meter += f1
         if it_count != 0 and it_count % show_interval == 0:
@@ -81,7 +81,7 @@ def val_epoch(model, criterion, val_dataloader, threshold=0.5):
             loss = criterion(output, target)
             loss_meter += loss.item()
             it_count += 1
-            # output = torch.sigmoid(output)
+            output = torch.sigmoid(output)
             f1 = utils.calc_f1(target, output, threshold)
             f1_meter += f1
     return loss_meter / it_count, f1_meter / it_count
@@ -180,7 +180,7 @@ def val(args):
 # 提交结果使用
 def test(args):
     if config.kind == 2 and config.top4_catboost:
-        top4_catboost_test(args)  # todo catboost
+        top4_catboost_test(args)  # catboost
     else:
         from dataset import transform
         from data_process import name2index
@@ -211,12 +211,12 @@ def test(args):
                 x = transform(df).unsqueeze(0).to(device)
                 fr = torch.tensor([age, sex], dtype=torch.float32)
                 if config.kind == 1:
-                    output = model(x, fr).squeeze().cpu().numpy()
+                    output = torch.sigmoid(model(x)).squeeze().cpu().numpy()
                 elif config.kind == 2:
                     output, out2 = model(x)
-                    output = output.squeeze().cpu().numpy()
+                    output = torch.sigmoid(output).squeeze().cpu().numpy()
                 else:
-                    output = model(x).squeeze().cpu().numpy()
+                    output = torch.sigmoid(model(x)).squeeze().cpu().numpy()
 
                 ixs = [i for i, out in enumerate(output) if out > 0.5]
                 for i in ixs:
@@ -381,31 +381,27 @@ def top4_catboost_test(args):
             age = int(age)
             sex = {'FEMALE': 0, 'MALE': 1, '': -999}[sex]
             file_path = os.path.join(config.test_dir, id)
-            df = pd.read_csv(file_path, sep=' ').values
-            x = transform(df).unsqueeze(0).to(device)
+            df = pd.read_csv(file_path, sep=' ')
+            x = transform(df.values).unsqueeze(0).to(device)
             fr = torch.tensor([age, sex], dtype=torch.float32)
-            if config.kind == 1:
-                output = model(x, fr).squeeze().cpu().numpy()
-            elif config.kind == 2:
-                output, out1 = model(x)
-                output = output.squeeze().cpu().numpy()
-                out1 = out1.squeeze().cpu().numpy()
-                other_f = [0, 0]  # todo
-                df_values = np.concatenate((output, out1, other_f, fr))
-                columnslist = []
-                columnslist += ['dnn1_%d' % i for i in range(len(output))]
-                columnslist += ['dnn2_%d' % i for i in range(len(out1))]
-                # print('len_dnn_feature', len(columnslist))
-                columnslist += ['other_f_%d' % i for i in range(len(other_f))]
-                columnslist += ['sex', 'age']
-                df = pd.DataFrame(df_values.reshape(1, -1), columns=columnslist)
-                df[df.columns[config.top4_cat_features]] = df[df.columns[config.top4_cat_features]].astype(int)
-                # for cindex in config.top4_cat_features:
-                #     df[df.columns[cindex]] = df[df.columns[cindex]].astype(int)
-                output = model_list_predict(model_list, df).squeeze()
-                # print(output)
-            else:
-                output = model(x).squeeze().cpu().numpy()
+            output, out1 = model(x)
+            output = torch.sigmoid(output).squeeze().cpu().numpy()
+            out1 = out1.squeeze().cpu().numpy()
+            r_features_file = os.path.join(config.r_train_dir, id)
+            other_f = get_other_features(df, r_features_file)
+            df_values = np.concatenate((output, out1, other_f, fr))
+            columnslist = []
+            columnslist += ['dnn1_%d' % i for i in range(len(output))]
+            columnslist += ['dnn2_%d' % i for i in range(len(out1))]
+            # print('len_dnn_feature', len(columnslist))
+            columnslist += ['other_f_%d' % i for i in range(len(other_f))]
+            columnslist += ['sex', 'age']
+            df = pd.DataFrame(df_values.reshape(1, -1), columns=columnslist)
+            df[df.columns[config.top4_cat_features]] = df[df.columns[config.top4_cat_features]].astype(int)
+            # for cindex in config.top4_cat_features:
+            #     df[df.columns[cindex]] = df[df.columns[cindex]].astype(int)
+            output = model_list_predict(model_list, df).squeeze()
+            # print(output)
 
             ixs = [i for i, out in enumerate(output) if out > 0.5]
             for i in ixs:
