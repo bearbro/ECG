@@ -224,7 +224,7 @@ def test(args):
                 fout.write('\n')
         fout.close()
 
-
+# 保存catboost模型
 def save_model_list(model_list, dir_path):
     utils.mkdirs(dir_path)
     for i, model in enumerate(model_list):
@@ -232,6 +232,7 @@ def save_model_list(model_list, dir_path):
     print('catboost model_list saved')
 
 
+# 加载catboost模型
 def load_model_list(dir_path):
     # print('catboost load model_list ')
     model_list = []
@@ -242,6 +243,7 @@ def load_model_list(dir_path):
     return model_list
 
 
+# 使用catboost进行预测
 def model_list_predict(model_list, X):
     y_pre = [[]] * len(model_list)
     for tagi, model in enumerate(model_list):
@@ -250,6 +252,7 @@ def model_list_predict(model_list, X):
     return y_pre
 
 
+# 获取catboost模型需要的数据
 def top4_make_dateset(model, dataloader, file_path, save=True):
     print('make dataset')
     if os.path.exists(file_path):
@@ -287,6 +290,7 @@ def top4_make_dateset(model, dataloader, file_path, save=True):
     return df
 
 
+# 拆分特征和标签
 def top4_getXy(df):
     X = df.iloc[:, :-1 * config.num_classes]
     y = df.iloc[:, -1 * config.num_classes:]
