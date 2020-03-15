@@ -226,6 +226,7 @@ def test(args):
 
 
 def save_model_list(model_list, dir_path):
+    utils.mkdirs(dir_path)
     for i, model in enumerate(model_list):
         model.save_model(os.path.join(dir_path, 'model_for_class_%d.dump' % i))
     print('catboost model_list saved')
@@ -261,7 +262,7 @@ def top4_make_dateset(model, dataloader, file_path, save=True):
         for inputs, fr, target, other_f in dataloader:
             inputs = inputs.to(device)
             output, out1 = model(inputs)
-            output = output.cpu()
+            output = torch.sigmoid(output).cpu()
             out1 = out1.cpu()
             # output, out1 = torch.zeros(64, 10), torch.ones(64, 20)
             vi = torch.cat([output, out1, other_f, fr, target], dim=1)
@@ -280,7 +281,7 @@ def top4_make_dateset(model, dataloader, file_path, save=True):
     idx2name = {idx: name for name, idx in name2idx.items()}
     columnslist += [idx2name[i] for i in range(target.size(1))]
     df = pd.DataFrame(values.numpy(), columns=columnslist)
-    df[columnslist[-4 - 55:]] = df[columnslist[-4 - 55:]].astype(int)
+    df[columnslist[-2 - 55:]] = df[columnslist[-2 - 55:]].astype(int)
     if save:
         df.to_csv(file_path, index=None)
     return df
@@ -387,7 +388,7 @@ def top4_catboost_test(args):
             output, out1 = model(x)
             output = torch.sigmoid(output).squeeze().cpu().numpy()
             out1 = out1.squeeze().cpu().numpy()
-            r_features_file = os.path.join(config.r_train_dir, id)
+            r_features_file = os.path.join(config.r_test_dir, id.replace('.txt', '.fea'))
             other_f = get_other_features(df, r_features_file)
             df_values = np.concatenate((output, out1, other_f, fr))
             columnslist = []

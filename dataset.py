@@ -151,10 +151,13 @@ def get_other_features(df, file_path):
     RR_skewness = [i.skew(axis=0).to_list() for i in RR]  # 计算偏斜度
     RR_kurtosis = [i.kurt(axis=0).to_list() for i in RR]  # 计算峰度
     # 选择中间的k个
-    k = 10
+    k = 4
     k_begin = (len(RR_min) - k) // 2
+    if k_begin < 0:
+        print('len(RR)=', len(RR_min))
+        raise
     RR_section_feature = [RR_min, RR_max, RR_mean, RR_std, RR_skewness, RR_kurtosis]
-    RR_section_feature_k = []  # 6*8*k  k=10  480
+    RR_section_feature_k = []  # 6*8*k  k  48*k
     for i in range(len(RR_section_feature)):
         RR_section_feature_k += RR_section_feature[i][k_begin:k_begin + k]
     # RR_section_feature_k k*6*8
@@ -178,7 +181,7 @@ def get_other_features(df, file_path):
 
     QRS_features = get_QRS_features(df, rr_idx)  # 1200
 
-    other_f = RR_section_feature_k + [pNN50, rP, RMSSD, RRHX] + QRS_features  # 480+4+1200
+    other_f = RR_section_feature_k + [pNN50, rP, RMSSD, RRHX] + QRS_features  # 48*k+4+1200
     return torch.tensor(other_f, dtype=torch.float32)
 
 
