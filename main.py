@@ -105,7 +105,7 @@ def train(args):
     val_dataloader = DataLoader(val_dataset, batch_size=config.batch_size, num_workers=4)
     print("train_datasize", len(train_dataset), "val_datasize", len(val_dataset))
     # optimizer and loss
-    optimizer = optim.Adam(model.parameters(), lr=config.lr, weight_decay=0.01)  # L2 正则化
+    optimizer = optim.Adam(model.parameters(), lr=config.lr)  # , weight_decay=0.01)  # L2 正则化
     w = torch.tensor(train_dataset.wc, dtype=torch.float).to(device)
     criterion = utils.WeightedMultilabel(w)
     # 模型保存文件夹
