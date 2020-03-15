@@ -201,7 +201,7 @@ class ECGNet(nn.Module):
 
     def _make_layer2d(self, block, planes, blocks=1, stride=(1, 1), size=1, conv_num=1):
         downsample = None
-        if stride != 1 or self.inplanes != planes * block.expansion:
+        if stride != (1, 1) or self.inplanes != planes * block.expansion:
             downsample = nn.Sequential(
                 nn.Conv2d(self.inplanes, planes * block.expansion,
                           kernel_size=1, stride=stride, bias=False),
@@ -257,6 +257,7 @@ class ECGNet(nn.Module):
 
 from graphviz import Digraph
 from torch.autograd import Variable
+
 
 # 画画用的
 def make_dot(var, params=None):
