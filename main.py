@@ -267,9 +267,9 @@ def top4_make_dateset(model, dataloader, file_path, save=True):
             # output, out1 = torch.zeros(64, 10), torch.ones(64, 20)
             vi = torch.cat([output, out1, other_f, fr, target], dim=1)
             values.append(vi)
-            n += 1
-            if n == 100:
-                break
+            # n += 1
+            # if n == 100:
+            #     break
     values = torch.cat(values, dim=0)
     columnslist = []
     columnslist += ['dnn1_%d' % i for i in range(output.size(1))]

@@ -56,7 +56,9 @@ class Config:
     top4_data_val = os.path.join(root, 'top4_data_val.csv')
     top4_data_train = os.path.join(root, 'top4_data_train.csv')
     top4_catboost_model = 'catboost_model'
-    top4_cat_features = [] + [55 + 1024 + 1684 + 1 + 55, 55 + 1024 + 1684 + 2 + 55]
+    top4_rr_k = 4
+    top4_cat_features = [] + [55 + 1024 + top4_rr_k * 6 * 8 + 4 + 1200 + 0,
+                              55 + 1024 + top4_rr_k * 6 * 8 + 4 + 1200 + 1]
 
 
 config = Config()

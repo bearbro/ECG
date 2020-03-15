@@ -151,7 +151,7 @@ def get_other_features(df, file_path):
     RR_skewness = [i.skew(axis=0).to_list() for i in RR]  # 计算偏斜度
     RR_kurtosis = [i.kurt(axis=0).to_list() for i in RR]  # 计算峰度
     # 选择中间的k个
-    k = 4
+    k = config.top4_rr_k
     k_begin = (len(RR_min) - k) // 2
     if k_begin < 0:
         print('len(RR)=', len(RR_min))
