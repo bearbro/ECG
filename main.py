@@ -209,9 +209,9 @@ def test(args):
                 file_path = os.path.join(config.test_dir, id)
                 df = pd.read_csv(file_path, sep=' ').values
                 x = transform(df).unsqueeze(0).to(device)
-                fr = torch.tensor([age, sex], dtype=torch.float32)
+                fr = torch.tensor([age, sex], dtype=torch.float32).unsqueeze(0).to(device)
                 if config.kind == 1:
-                    output = torch.sigmoid(model(x)).squeeze().cpu().numpy()
+                    output = torch.sigmoid(model(x, fr)).squeeze().cpu().numpy()
                 elif config.kind == 2:
                     output, out2 = model(x)
                     output = torch.sigmoid(output).squeeze().cpu().numpy()
@@ -223,6 +223,7 @@ def test(args):
                     fout.write("\t" + idx2name[i])
                 fout.write('\n')
         fout.close()
+
 
 # 保存catboost模型
 def save_model_list(model_list, dir_path):
