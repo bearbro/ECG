@@ -6,6 +6,8 @@
 '''
 import math
 import os, copy
+import random
+
 import torch
 import numpy as np
 import pandas as pd
@@ -67,55 +69,18 @@ def transform(sig, train=False):
     return sig
 
 
-class ECGDataset(Dataset):
-    """
-    A generic data loader where the samples are arranged in this way:
-    dd = {'train': train, 'val': val, "idx2name": idx2name, 'file2idx': file2idx}
-    """
-
-    def __init__(self, data_path, train=True):
-        super(ECGDataset, self).__init__()
-        dd = torch.load(data_path)
-        self.train = train
-        self.data = dd['train'] if train else dd['val']
-        self.idx2name = dd['idx2name']
-        self.file2idx = dd['file2idx']
-        self.wc = 1. / np.log(dd['wc'])
-        self.file2age = dd['file2age']
-        self.file2sex = dd['file2sex']
-
-    def __getitem__(self, index):
-        fid = self.data[index]
-        file_path = os.path.join(config.train_dir, fid)
-        df = pd.read_csv(file_path, sep=' ')
-        x = transform(df.values, self.train)
-        age = self.file2age[fid]
-        sex = self.file2sex[fid]
-        fr = torch.tensor([age, sex], dtype=torch.float32)
-        target = np.zeros(config.num_classes)
-        target[self.file2idx[fid]] = 1
-        target = torch.tensor(target, dtype=torch.float32)
-        if config.top4_catboost:
-            # 获取其他传统特征
-            r_features_file = os.path.join(config.r_train_dir, fid.replace('txt', 'fea'))
-            other_f = get_other_features(df, r_features_file)  # 1684
-            return x, fr, target, other_f
-        return x, fr, target
-
-    def __len__(self):
-        return len(self.data)
-
-
 # df 5000*8
 def get_QRS_features(df, rr_idx):
-    # QRS波形态的特征提取
-    # 在一个导联上，以R峰为基准，向左右两边提取固定长度的数据（-0.2，0.4），【100，200】
-    # 获得若千个含有R峰的片段, 将其叠加。
-    # 通过评估Templates的重合度，来间接反映出病变QRS波的特征
-    # 每个Templates同索引的极差(max - min)
-    # 每个Templates同索引的均值(mean)
-    # 每个Templates同索引的标准差(std)
-    # 经过resample后输出三个等长的长度为50的序列作为特征。  重采样 ？
+    """
+    QRS波形态的特征提取
+        在一个导联上，以R峰为基准，向左右两边提取固定长度的数据（-0.2，0.4），【100，200】
+        获得若千个含有R峰的片段, 将其叠加。
+        通过评估Templates的重合度，来间接反映出病变QRS波的特征
+        每个Templates同索引的极差(max - min)
+        每个Templates同索引的均值(mean)
+        每个Templates同索引的标准差(std)
+        经过resample后输出三个等长的长度为50的序列作为特征。  重采样
+    """
     rr = []
     for i in rr_idx:
         begin = i - int(config.target_point_num * 0.2 / 10)
@@ -183,6 +148,46 @@ def get_other_features(df, file_path):
 
     other_f = RR_section_feature_k + [pNN50, rP, RMSSD, RRHX] + QRS_features  # 48*k+4+1200
     return torch.tensor(other_f, dtype=torch.float32)
+
+
+class ECGDataset(Dataset):
+    """
+    A generic data loader where the samples are arranged in this way:
+    dd = {'train': train, 'val': val, "idx2name": idx2name, 'file2idx': file2idx}
+    """
+
+    def __init__(self, data_path, train=True):
+        super(ECGDataset, self).__init__()
+        dd = torch.load(data_path)
+        self.train = train
+        self.data = dd['train'] if train else dd['val']
+        random.shuffle(self.data)
+        self.idx2name = dd['idx2name']
+        self.file2idx = dd['file2idx']
+        self.wc = 1. / np.log(dd['wc'])
+        self.file2age = dd['file2age']
+        self.file2sex = dd['file2sex']
+
+    def __getitem__(self, index):
+        fid = self.data[index]
+        file_path = os.path.join(config.train_dir, fid)
+        df = pd.read_csv(file_path, sep=' ')
+        x = transform(df.values, self.train)
+        age = self.file2age[fid]
+        sex = self.file2sex[fid]
+        fr = torch.tensor([age, sex], dtype=torch.float32)
+        target = np.zeros(config.num_classes)
+        target[self.file2idx[fid]] = 1
+        target = torch.tensor(target, dtype=torch.float32)
+        if config.top4_catboost:
+            # 获取其他传统特征
+            r_features_file = os.path.join(config.r_train_dir, fid.replace('txt', 'fea'))
+            other_f = get_other_features(df, r_features_file)  # 1684
+            return x, fr, target, other_f
+        return x, fr, target
+
+    def __len__(self):
+        return len(self.data)
 
 
 if __name__ == '__main__':
