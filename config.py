@@ -21,13 +21,15 @@ class Config:
     root = r'data'
 
     # for train
-    # 训练的模型名称
-
+    # 训练的模型类型
     kind = 2
     train_data = os.path.join(root, ['train.pth', 'train_without_wc.pth', 'train.pth'][kind])
+    # 训练的模型名称
     model_name = ['resnet34', 'ECGNet', 'DeepNN34'][kind]
     # 在第几个epoch进行到下一个state,调整lr
     stage_epoch = [32, 64, 128]
+    # 导联个数
+    channel_size = 12
     # 训练时的batch大小
     batch_size = 64
     # label的类别数
@@ -51,14 +53,14 @@ class Config:
 
     # for test
     temp_dir = os.path.join(root, 'temp')
-    top4_state = 'ckpt/DeepNN34_202003021252/best_w.pth'
+    top4_state = None
     top4_catboost = True
     top4_data_val = os.path.join(root, 'top4_data_val.csv')
     top4_data_train = os.path.join(root, 'top4_data_train.csv')
     top4_catboost_model = 'catboost_model'
     top4_rr_k = 4
-    top4_cat_features = [] + [55 + 1024 + top4_rr_k * 6 * 8 + 4 + 1200 + 0,
-                              55 + 1024 + top4_rr_k * 6 * 8 + 4 + 1200 + 1]
+    top4_cat_features = [] + [55 + 1024 + top4_rr_k * 6 * channel_size + 4 + 3 * 50 * channel_size + 0,
+                              55 + 1024 + top4_rr_k * 6 * channel_size + 4 + 3 * 50 * channel_size + 1]
 
 
 config = Config()

@@ -92,7 +92,7 @@ def train(args):
         top4_catboost_train(args)
         return
     # model
-    model = getattr(models, config.model_name)(num_classes=config.num_classes)
+    model = getattr(models, config.model_name)(num_classes=config.num_classes, channel_size=config.channel_size)
     if args.ckpt and not args.resume:
         state = torch.load(args.ckpt, map_location='cpu')
         model.load_state_dict(state['state_dict'])
@@ -161,7 +161,7 @@ def train(args):
 # 用于测试加载模型
 def val(args):
     list_threhold = [0.5]
-    model = getattr(models, config.model_name)(num_classes=config.num_classes)
+    model = getattr(models, config.model_name)(num_classes=config.num_classes, channel_size=config.channel_size)
     # if args.ckpt:
     model.load_state_dict(torch.load(args.ckpt, map_location='cpu')['state_dict'])
     model = model.to(device)
@@ -188,7 +188,7 @@ def test(args):
         idx2name = {idx: name for name, idx in name2idx.items()}
         utils.mkdirs(config.sub_dir)
         # model
-        model = getattr(models, config.model_name)(num_classes=config.num_classes)
+        model = getattr(models, config.model_name)(num_classes=config.num_classes, channel_size=config.channel_size)
         model.load_state_dict(torch.load(args.ckpt, map_location='cpu')['state_dict'])
         model = model.to(device)
         model.eval()
@@ -207,8 +207,8 @@ def test(args):
                 age = int(age)
                 sex = {'FEMALE': 0, 'MALE': 1, '': -999}[sex]
                 file_path = os.path.join(config.test_dir, id)
-                df = pd.read_csv(file_path, sep=' ').values
-                x = transform(df).unsqueeze(0).to(device)
+                df = utils.read_csv(file_path, sep=' ')
+                x = transform(df.values).unsqueeze(0).to(device)
                 fr = torch.tensor([age, sex], dtype=torch.float32).unsqueeze(0).to(device)
                 if config.kind == 1:
                     output = torch.sigmoid(model(x, fr)).squeeze().cpu().numpy()
@@ -300,7 +300,7 @@ def top4_getXy(df):
 
 def top4_catboost_train(args):
     print('top4_catboost_train begin')
-    model = getattr(models, config.model_name)(num_classes=config.num_classes)
+    model = getattr(models, config.model_name)(num_classes=config.num_classes, channel_size=config.channel_size)
     # if args.ckpt:
     model.load_state_dict(torch.load(args.ckpt, map_location='cpu')['state_dict'])
     # else:
@@ -366,7 +366,7 @@ def top4_catboost_test(args):
     idx2name = {idx: name for name, idx in name2idx.items()}
     utils.mkdirs(config.sub_dir)
     # model
-    model = getattr(models, config.model_name)(num_classes=config.num_classes)
+    model = getattr(models, config.model_name)(num_classes=config.num_classes, channel_size=config.channel_size)
     model.load_state_dict(torch.load(args.ckpt, map_location='cpu')['state_dict'])
     model = model.to(device)
     model.eval()
@@ -387,7 +387,7 @@ def top4_catboost_test(args):
             age = int(age)
             sex = {'FEMALE': 0, 'MALE': 1, '': -999}[sex]
             file_path = os.path.join(config.test_dir, id)
-            df = pd.read_csv(file_path, sep=' ')
+            df = utils.read_csv(file_path, sep=' ', channel_size=config.channel_size)
             x = transform(df.values).unsqueeze(0).to(device)
             fr = torch.tensor([age, sex], dtype=torch.float32)
             output, out1 = model(x)

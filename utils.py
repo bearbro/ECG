@@ -9,6 +9,7 @@ import numpy as np
 import time, os
 from sklearn.metrics import f1_score
 from torch import nn
+import pandas as pd
 
 
 def mkdirs(path):
@@ -49,3 +50,19 @@ class WeightedMultilabel(nn.Module):
     def forward(self, outputs, targets):
         loss = self.cerition(outputs, targets)
         return (loss * self.weights).mean()
+
+
+# 读取数据
+def read_csv(file_path, sep=' ', channel_size=8):
+    df = pd.read_csv(file_path, sep=sep)
+    if channel_size == 12:
+        # 计算出4个导联
+        # III = II - I
+        df['III'] = df['II'] - df['I']
+        # aVR = -(I + II) / 2
+        df['aVR'] = -(df['I'] + df['II']) / 2
+        # aVL = I - II / 2
+        df['aVL'] = df['I'] - df['II'] / 2
+        # aVF = II - I / 2
+        df['aVF'] = df['II'] - df['I'] / 2
+    return df

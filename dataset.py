@@ -11,6 +11,8 @@ import random
 import torch
 import numpy as np
 import pandas as pd
+
+import utils
 from config import config
 from torch.utils.data import Dataset
 from sklearn.preprocessing import scale
@@ -88,7 +90,7 @@ def get_QRS_features(df, rr_idx):
         if begin >= 0 and end <= config.target_point_num:
             rr.append((begin, end))
     QRS = []
-    for i in range(8):
+    for i in range(df.shape[1]):
         x = df.iloc[:, i].values
         t = []
         for j in rr:
@@ -138,7 +140,7 @@ def get_other_features(df, file_path):
     pNN50 = len([i for i in rrc if i * 10000 / config.target_point_num > 50]) / len(rrc)
 
     # R波密度: R波个数 / 记录长度 1
-    rP = len(RR) / ((rr_idx[-1] - rr_idx[0]) * 0.002)
+    rP = len(RR) / ((rr_idx[-1] - rr_idx[0]) * 10000 / config.target_point_num)
     # RMSSD: 相邻RR间期差值的均方根 1
     RMSSD = math.sqrt(sum([i ** 2 for i in rrc]) / len(rrc))
     # RR间期的采样熵:衡量RR间期变化混乱   1
@@ -146,7 +148,8 @@ def get_other_features(df, file_path):
 
     QRS_features = get_QRS_features(df, rr_idx)  # 1200
 
-    other_f = RR_section_feature_k + [pNN50, rP, RMSSD, RRHX] + QRS_features  # 48*k+4+1200
+    other_f = RR_section_feature_k + [pNN50, rP, RMSSD, RRHX] + QRS_features  # 6*8*k+4+50*3*8=1396
+    # channle_size==12 -> 6*12*4+4+50*3*12=2092
     return torch.tensor(other_f, dtype=torch.float32)
 
 
@@ -161,7 +164,8 @@ class ECGDataset(Dataset):
         dd = torch.load(data_path)
         self.train = train
         self.data = dd['train'] if train else dd['val']
-        random.shuffle(self.data)
+        if train:
+            random.shuffle(self.data)
         self.idx2name = dd['idx2name']
         self.file2idx = dd['file2idx']
         self.wc = 1. / np.log(dd['wc'])
@@ -171,7 +175,7 @@ class ECGDataset(Dataset):
     def __getitem__(self, index):
         fid = self.data[index]
         file_path = os.path.join(config.train_dir, fid)
-        df = pd.read_csv(file_path, sep=' ')
+        df = utils.read_csv(file_path, sep=' ', channel_size=config.channel_size)
         x = transform(df.values, self.train)
         age = self.file2age[fid]
         sex = self.file2sex[fid]

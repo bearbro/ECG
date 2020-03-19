@@ -51,9 +51,9 @@ class Channel_Attention1d(nn.Module):
         self.avgpool = nn.AdaptiveAvgPool1d(1)
         self.maxpool = nn.AdaptiveMaxPool1d(1)
 
-        self.fc1 = nn.Linear(in_planes*2, int(in_planes * inner_units_ratio))
+        self.fc1 = nn.Linear(in_planes * 2, int(in_planes * inner_units_ratio))
         self.rule = nn.ReLU(inplace=True)
-        self.fc2 = nn.Linear(int(in_planes * inner_units_ratio), in_planes*2)
+        self.fc2 = nn.Linear(int(in_planes * inner_units_ratio), in_planes * 2)
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
@@ -74,10 +74,10 @@ class Channel_Attention1d(nn.Module):
 
 
 class DeepNN(nn.Module):
-    def __init__(self, block, layers, num_classes=55):
+    def __init__(self, block, layers, num_classes=55, channel_size=8):
         self.inplanes = 64
         super(DeepNN, self).__init__()
-        self.conv1 = nn.Conv1d(8, 64, kernel_size=15, stride=2, padding=7,
+        self.conv1 = nn.Conv1d(channel_size, 64, kernel_size=15, stride=2, padding=7,
                                bias=False)
         self.bn1 = nn.BatchNorm1d(64)
         self.relu = nn.ReLU(inplace=True)
@@ -117,7 +117,6 @@ class DeepNN(nn.Module):
 
         return nn.Sequential(*layers)
 
-
     def forward(self, x):
         x = self.conv1(x)
         x = self.bn1(x)
@@ -154,8 +153,8 @@ def DeepNN34(**kwargs):
 
 
 if __name__ == '__main__':
-    model = DeepNN34()
-    x = torch.randn(20, 8, 5000)
+    model = DeepNN34(channel_size=12)
+    x = torch.randn(20, 12, 5000)
     y, o = model(x)
 
     num_params = 0
