@@ -38,7 +38,7 @@ def split_data(file2idx, name2idx, val_ratio=0.1):
     :return:训练集，验证集路径
     '''
     data = set(os.listdir(config.train_dir))
-    # todo 去重
+    #  去重
     new_data = set()
     dv = set()
     for i in data:
@@ -46,24 +46,24 @@ def split_data(file2idx, name2idx, val_ratio=0.1):
         with open(file_path, 'r', encoding='utf-8') as fr:
             ss = fr.read()
         if ss in dv:
-            continue  # todo 去重
+            continue  # 去重
         elif name2idx['窦性心律'] in file2idx[i] and name2idx['窦性心律不齐'] in file2idx[i]:
-            continue  # todo  去除同时出现窦性心律和窦性心律不齐
+            continue  # 去除同时出现窦性心律和窦性心律不齐
         else:
             new_data.add(i)
             dv.add(ss)
     data = new_data
 
     for i in data:
+        #  部分数据标记为不完全性右束支传导阻滞或完全性右束支传导阻滞，却没标记为右束支传导阻滞
         if (name2idx['不完全性右束支传导阻滞'] in file2idx[i] or name2idx['完全性右束支传导阻滞'] in file2idx[i]) \
                 and name2idx['右束支传导阻滞'] not in file2idx[i]:
             file2idx[i].append(name2idx['右束支传导阻滞'])
-        # todo 部分数据标记为不完全性右束支传导阻滞或完全性右束支传导阻滞，却没标记为右束支传导阻滞
+        #  部分数据标记为完全性左束支传导阻滞，却没标记为左束支传导阻滞
         if name2idx['完全性左束支传导阻滞'] in file2idx[i] \
                 and name2idx['右束支传导阻滞'] not in file2idx[i]:
             file2idx[i].append(name2idx['左束支传导阻滞'])
             file2idx[i].append(name2idx['左束支传导阻滞'])
-        # todo 部分数据标记为完全性左束支传导阻滞，却没标记为左束支传导阻滞
 
     val = set()
     idx2file = [[] for _ in range(config.num_classes)]
