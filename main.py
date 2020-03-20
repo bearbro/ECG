@@ -207,7 +207,7 @@ def test(args):
                 age = int(age)
                 sex = {'FEMALE': 0, 'MALE': 1, '': -999}[sex]
                 file_path = os.path.join(config.test_dir, id)
-                df = utils.read_csv(file_path, sep=' ')
+                df = utils.read_csv(file_path, sep=' ', channel_size=config.channel_size)
                 x = transform(df.values).unsqueeze(0).to(device)
                 fr = torch.tensor([age, sex], dtype=torch.float32).unsqueeze(0).to(device)
                 if config.kind == 1:
