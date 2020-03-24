@@ -53,15 +53,25 @@ class Config:
 
     # for test
     temp_dir = os.path.join(root, 'temp')
-    top4_state = None
     top4_catboost = True
-    top4_DeepNN = False
-    top4_data_val = os.path.join(root, 'top4_data_val.csv')
-    top4_data_train = os.path.join(root, 'top4_data_train.csv')
+    top4_DeepNN = True
+    top4_DeepNN_tag = True
     top4_catboost_model = 'catboost_model_only'
+    top4_data_val = os.path.join(root, '%s_data_train.csv' % top4_catboost_model)
+    top4_data_train = os.path.join(root, '%s_data_train.csv' % top4_catboost_model)
     top4_rr_k = 4
-    top4_cat_features = []  # + [55 + 1024 + top4_rr_k * 6 * channel_size + 4 + 3 * 50 * channel_size + 0,
-    #   55 + 1024 + top4_rr_k * 6 * channel_size + 4 + 3 * 50 * channel_size + 1]
+    # 30 43 0.001  18 350 0.008
+    top4_tag_list = [list(range(0, 31 + 1)) + [46], list(range(0, 20))][0]
+    if top4_DeepNN:
+        top4_cat_features = [] + [55 + 1024 + top4_rr_k * 6 * channel_size + 4 + 3 * 50 * channel_size + 0,
+                                  55 + 1024 + top4_rr_k * 6 * channel_size + 4 + 3 * 50 * channel_size + 1]
+        if top4_DeepNN_tag:
+            top4_cat_features = [] + [
+                len(top4_tag_list) + 1024 + top4_rr_k * 6 * channel_size + 4 + 3 * 50 * channel_size + 0,
+                len(top4_tag_list) + 1024 + top4_rr_k * 6 * channel_size + 4 + 3 * 50 * channel_size + 1]
+    else:
+        top4_cat_features = [] + [top4_rr_k * 6 * channel_size + 4 + 3 * 50 * channel_size + 0,
+                                  top4_rr_k * 6 * channel_size + 4 + 3 * 50 * channel_size + 1]
 
 
 config = Config()

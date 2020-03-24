@@ -51,6 +51,9 @@ def train_epoch(model, optimizer, criterion, train_dataloader, show_interval=10)
             output, _ = model(inputs)
         else:
             output = model(inputs)
+        if config.kind == 2 and config.top4_DeepNN_tag:
+            output = output[:, config.top4_tag_list]
+            target = target[:, config.top4_tag_list]
         loss = criterion(output, target)  # BCEWithLogitsLoss, 先对output进行sigmoid，然后求BCELoss
         loss.backward()
         optimizer.step()
@@ -78,6 +81,9 @@ def val_epoch(model, criterion, val_dataloader, threshold=0.5):
                 output, _ = model(inputs)
             else:
                 output = model(inputs)
+            if config.kind == 2 and config.top4_DeepNN_tag:
+                output = output[:, config.top4_tag_list]
+                target = target[:, config.top4_tag_list]
             loss = criterion(output, target)
             loss_meter += loss.item()
             it_count += 1
@@ -107,6 +113,9 @@ def train(args):
     # optimizer and loss
     optimizer = optim.Adam(model.parameters(), lr=config.lr)  # , weight_decay=0.01)  # L2 正则化
     w = torch.tensor(train_dataset.wc, dtype=torch.float).to(device)
+    if config.kind == 2 and config.top4_DeepNN_tag:
+        w = w[config.top4_tag_list]
+    w = w.to(device)
     criterion = utils.WeightedMultilabel(w)
     # 模型保存文件夹
     model_save_dir = '%s/%s_%s' % (config.ckpt, config.model_name, time.strftime("%Y%m%d%H%M"))
@@ -273,6 +282,8 @@ def top4_make_dateset(model, dataloader, file_path, save=True):
                 output, out1 = model(inputs)
                 output = torch.sigmoid(output).cpu()
                 out1 = out1.cpu()
+                if config.top4_DeepNN_tag:
+                    output = output[:, config.top4_tag_list]
                 # output, out1 = torch.zeros(64, 10), torch.ones(64, 20)
                 vi = torch.cat([output, out1, other_f, fr, target], dim=1)
                 values.append(vi)
@@ -415,6 +426,8 @@ def top4_catboost_test(args):
                 output, out1 = model(x)
                 output = torch.sigmoid(output).squeeze().cpu().numpy()
                 out1 = out1.squeeze().cpu().numpy()
+                if config.top4_DeepNN_tag:
+                    output = output[config.top4_tag_list]
             else:
                 output, out1 = torch.zeros(0).numpy(), torch.ones(0).numpy()
             r_features_file = os.path.join(config.r_test_dir, id.replace('.txt', '.fea'))
