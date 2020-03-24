@@ -1,4 +1,4 @@
-import torch
+from config import config
 
 
 def read_labels(filename):
@@ -23,9 +23,17 @@ def get_scoreA(args):
     val = read_labels('data/hefei_round1_ansA_20191008.txt')
     true_n = {}  # val有pred有
     false_n = {}  # val有pred无
+    list_name = []
+    for line in open(config.arrythmia, encoding='utf-8'):
+        list_name.append(line.strip())
+    indx2name = {i: name for i, name in enumerate(list_name)}
     for k, v in pred.items():
         v_val = val[k]
         for i in v_val:
+            if args.tag:
+                x = [indx2name[ii] for ii in config.top4_tag_list]
+                if i not in x:
+                    continue
             if i in v:
                 true_n[i] = true_n.get(i, 0) + 1
             else:
@@ -104,5 +112,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--subA", type=str, help="the path of model weight file")
     parser.add_argument("--save", action='store_true', default=False)
+    parser.add_argument("--tag", action='store_true', default=False)  # 只考虑部分
     args = parser.parse_args()
     get_scoreA(args)
