@@ -56,7 +56,7 @@ class Config:
     top4_catboost = True
     top4_DeepNN = True
     top4_DeepNN_tag = True
-    top4_catboost_model = 'catboost_model_only'
+    top4_catboost_model = 'catboost_model_only_%d_%d' % (target_point_num, channel_size)
     top4_data_val = os.path.join(root, '%s_data_train.csv' % top4_catboost_model)
     top4_data_train = os.path.join(root, '%s_data_train.csv' % top4_catboost_model)
     top4_rr_k = 4

@@ -228,6 +228,8 @@ def test(args):
                 elif config.kind == 2:
                     output, out2 = model(x)
                     output = torch.sigmoid(output).squeeze().cpu().numpy()
+                    if config.top4_DeepNN:
+                        output = output[config.top4_tag_list]
                 else:
                     output = torch.sigmoid(model(x)).squeeze().cpu().numpy()
 
