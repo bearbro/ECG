@@ -55,12 +55,13 @@ class Config:
     temp_dir = os.path.join(root, 'temp')
     top4_state = None
     top4_catboost = True
+    top4_DeepNN = False
     top4_data_val = os.path.join(root, 'top4_data_val.csv')
     top4_data_train = os.path.join(root, 'top4_data_train.csv')
-    top4_catboost_model = 'catboost_model'
+    top4_catboost_model = 'catboost_model_only'
     top4_rr_k = 4
-    top4_cat_features = [] + [55 + 1024 + top4_rr_k * 6 * channel_size + 4 + 3 * 50 * channel_size + 0,
-                              55 + 1024 + top4_rr_k * 6 * channel_size + 4 + 3 * 50 * channel_size + 1]
+    top4_cat_features = []  # + [55 + 1024 + top4_rr_k * 6 * channel_size + 4 + 3 * 50 * channel_size + 0,
+    #   55 + 1024 + top4_rr_k * 6 * channel_size + 4 + 3 * 50 * channel_size + 1]
 
 
 config = Config()

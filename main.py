@@ -161,10 +161,14 @@ def train(args):
 # 用于测试加载模型
 def val(args):
     list_threhold = [0.5]
-    model = getattr(models, config.model_name)(num_classes=config.num_classes, channel_size=config.channel_size)
-    # if args.ckpt:
-    model.load_state_dict(torch.load(args.ckpt, map_location='cpu')['state_dict'])
-    model = model.to(device)
+    if config.top4_DeepNN:
+        model = getattr(models, config.model_name)(num_classes=config.num_classes, channel_size=config.channel_size)
+        model.load_state_dict(torch.load(args.ckpt, map_location='cpu')['state_dict'])
+        model = model.to(device)
+        print(config.model_name, args.ckpt)
+    else:
+        model = None
+        print('no', config.model_name)
     val_dataset = ECGDataset(data_path=config.train_data, train=False)
     val_dataloader = DataLoader(val_dataset, batch_size=config.batch_size, num_workers=4)
     if config.kind == 2 and config.top4_catboost:
@@ -259,16 +263,26 @@ def top4_make_dateset(model, dataloader, file_path, save=True):
     if os.path.exists(file_path):
         val_df = pd.read_csv(file_path, index_col=None)
         return val_df
-    model.eval()
     values = []
-    with torch.no_grad():
+    if config.top4_DeepNN:
+        model.eval()
+        with torch.no_grad():
+            n = 0
+            for inputs, fr, target, other_f in dataloader:
+                inputs = inputs.to(device)
+                output, out1 = model(inputs)
+                output = torch.sigmoid(output).cpu()
+                out1 = out1.cpu()
+                # output, out1 = torch.zeros(64, 10), torch.ones(64, 20)
+                vi = torch.cat([output, out1, other_f, fr, target], dim=1)
+                values.append(vi)
+                # n += 1
+                # if n == 100:
+                #     break
+    else:
         n = 0
         for inputs, fr, target, other_f in dataloader:
-            inputs = inputs.to(device)
-            output, out1 = model(inputs)
-            output = torch.sigmoid(output).cpu()
-            out1 = out1.cpu()
-            # output, out1 = torch.zeros(64, 10), torch.ones(64, 20)
+            output, out1 = torch.zeros(inputs.shape[0], 0), torch.ones(inputs.shape[0], 0)
             vi = torch.cat([output, out1, other_f, fr, target], dim=1)
             values.append(vi)
             # n += 1
@@ -300,12 +314,14 @@ def top4_getXy(df):
 
 def top4_catboost_train(args):
     print('top4_catboost_train begin')
-    model = getattr(models, config.model_name)(num_classes=config.num_classes, channel_size=config.channel_size)
-    # if args.ckpt:
-    model.load_state_dict(torch.load(args.ckpt, map_location='cpu')['state_dict'])
-    # else:
-    #     model.load_state_dict(torch.load(config.ckpt.top4_state, map_location='cpu')['state_dict'])
-    model = model.to(device)
+    if config.top4_DeepNN:
+        model = getattr(models, config.model_name)(num_classes=config.num_classes, channel_size=config.channel_size)
+        model.load_state_dict(torch.load(args.ckpt, map_location='cpu')['state_dict'])
+        model = model.to(device)
+        print(config.model_name, args.ckpt)
+    else:
+        model = None
+        print('no', config.model_name)
     val_dataset = ECGDataset(data_path=config.train_data, train=False)
     val_dataloader = DataLoader(val_dataset, batch_size=config.batch_size, num_workers=4)
     train_dataset = ECGDataset(data_path=config.train_data, train=True)
@@ -324,7 +340,7 @@ def top4_catboost_train(args):
                 random_seed=42,
                 eval_metric='F1',
                 learning_rate=0.03,  # todo 超参数选择
-                task_type={'cuda': 'GPU', 'cpu': 'cpu'}[device.type],
+                task_type={'cuda': 'GPU', 'cpu': 'CPU'}[device.type],
                 od_type='Iter',  # 早停
                 od_wait=40
             )
@@ -365,11 +381,16 @@ def top4_catboost_test(args):
     name2idx = name2index(config.arrythmia)
     idx2name = {idx: name for name, idx in name2idx.items()}
     utils.mkdirs(config.sub_dir)
-    # model
-    model = getattr(models, config.model_name)(num_classes=config.num_classes, channel_size=config.channel_size)
-    model.load_state_dict(torch.load(args.ckpt, map_location='cpu')['state_dict'])
-    model = model.to(device)
-    model.eval()
+    if config.top4_DeepNN:
+        # model
+        model = getattr(models, config.model_name)(num_classes=config.num_classes, channel_size=config.channel_size)
+        model.load_state_dict(torch.load(args.ckpt, map_location='cpu')['state_dict'])
+        model = model.to(device)
+        model.eval()
+        print(config.model_name, args.ckpt)
+    else:
+        model = None
+        print('no', config.model_name)
     sub_file = '%s/subA_%s.txt' % (config.sub_dir, time.strftime("%Y%m%d%H%M"))
     print(sub_file)
     fout = open(sub_file, 'w', encoding='utf-8')
@@ -388,11 +409,14 @@ def top4_catboost_test(args):
             sex = {'FEMALE': 0, 'MALE': 1, '': -999}[sex]
             file_path = os.path.join(config.test_dir, id)
             df = utils.read_csv(file_path, sep=' ', channel_size=config.channel_size)
-            x = transform(df.values).unsqueeze(0).to(device)
             fr = torch.tensor([age, sex], dtype=torch.float32)
-            output, out1 = model(x)
-            output = torch.sigmoid(output).squeeze().cpu().numpy()
-            out1 = out1.squeeze().cpu().numpy()
+            if config.top4_DeepNN:
+                x = transform(df.values).unsqueeze(0).to(device)
+                output, out1 = model(x)
+                output = torch.sigmoid(output).squeeze().cpu().numpy()
+                out1 = out1.squeeze().cpu().numpy()
+            else:
+                output, out1 = torch.zeros(0).numpy(), torch.ones(0).numpy()
             r_features_file = os.path.join(config.r_test_dir, id.replace('.txt', '.fea'))
             other_f = get_other_features(df, r_features_file)
             df_values = np.concatenate((output, out1, other_f, fr))
